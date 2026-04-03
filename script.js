@@ -1,15 +1,22 @@
 // ================= CONFIG =================
 const ADMIN_PASSWORD = "Predictions6552";
 
-let isAdmin = false;
+// IMPORTANT:
+// For GitHub Pages, this is the lock that works for EVERYONE.
+// Set to null for no scheduled lock.
+// Example: "2026-03-08"
+let globalLockOnDate = null;
+
+// Manual lock is only for your current browser while testing locally/live.
+// It will NOT lock the site for everyone on GitHub Pages.
 let manualLock = false;
-let lockOnDate = localStorage.getItem("lockOnDate") || null;
+let isAdmin = false;
 
 let winnerChartInstance = null;
 
 // ================= HELPERS =================
 function getEliminatedList() {
-  return eliminatedByWeek.flatMap(w => w.players);
+  return eliminatedByWeek.flatMap((week) => week.players);
 }
 
 function isEliminated(name) {
@@ -20,8 +27,10 @@ function isEliminated(name) {
 function calculateScore(player) {
   let score = 3;
 
-  player.picks.forEach(p => {
-    if (isEliminated(p)) score--;
+  player.picks.forEach((pick) => {
+    if (isEliminated(pick)) {
+      score -= 1;
+    }
   });
 
   return Math.max(score, 0);
@@ -29,52 +38,65 @@ function calculateScore(player) {
 
 function getSortedPlayers() {
   return [...players].sort((a, b) => {
-    const diff = calculateScore(b) - calculateScore(a);
-    if (diff !== 0) return diff;
+    const scoreDifference = calculateScore(b) - calculateScore(a);
+
+    if (scoreDifference !== 0) {
+      return scoreDifference;
+    }
+
     return a.name.localeCompare(b.name);
   });
 }
 
 function formatPick(pick) {
-  return isEliminated(pick)
-    ? `<span class="eliminated-name">${pick}</span>`
-    : pick;
+  if (isEliminated(pick)) {
+    return `<span class="eliminated-name">${pick}</span>`;
+  }
+
+  return pick;
 }
 
 // ================= TABLE =================
+// Dense ranking:
+// 3,3,3,2,2,1 becomes 1,1,1,2,2,3
 function renderStandings() {
   const body = document.getElementById("standingsBody");
   body.innerHTML = "";
 
-  const sorted = getSortedPlayers();
+  const sortedPlayers = getSortedPlayers();
 
-  let prevScore = null;
-  let rank = 0;
+  let previousScore = null;
+  let displayedRank = 0;
 
-  sorted.forEach((p, i) => {
-    const score = calculateScore(p);
+  sortedPlayers.forEach((player) => {
+    const score = calculateScore(player);
 
-    if (score !== prevScore) {
-      rank = i + 1;
+    if (score !== previousScore) {
+      displayedRank += 1;
     }
 
     body.innerHTML += `
       <tr>
-        <td>${rank}</td>
-        <td>${p.name}</td>
-        <td>${p.picks.map(formatPick).join(", ")}</td>
-        <td>${formatPick(p.winnerPick)}</td>
+        <td>${displayedRank}</td>
+        <td>${player.name}</td>
+        <td>${player.picks.map(formatPick).join(", ")}</td>
+        <td>${formatPick(player.winnerPick)}</td>
         <td>${score}</td>
       </tr>
     `;
 
-    prevScore = score;
+    previousScore = score;
   });
 }
 
 // ================= UPDATE =================
 function renderUpdateMessage() {
   document.getElementById("updateMessage").textContent = updateMessage;
+
+  const updateInput = document.getElementById("updateInput");
+  if (updateInput) {
+    updateInput.value = updateMessage;
+  }
 }
 
 // ================= ELIMINATED =================
@@ -82,21 +104,25 @@ function renderEliminatedByWeek() {
   const div = document.getElementById("eliminatedByWeek");
   div.innerHTML = "";
 
-  eliminatedByWeek.forEach(w => {
+  const sortedWeeks = [...eliminatedByWeek].sort((a, b) => a.week - b.week);
+
+  sortedWeeks.forEach((week) => {
     div.innerHTML += `
       <div class="week-block">
-        <strong>Week ${w.week}:</strong> ${w.players.join(", ")}
+        <strong>Week ${week.week}:</strong> ${
+          week.players.length ? week.players.join(", ") : "No eliminations yet"
+        }
       </div>
     `;
   });
 }
 
-// ================= CHART (CLEANER LEGEND) =================
+// ================= CHART =================
 function renderChart() {
   const counts = {};
 
-  players.forEach(p => {
-    counts[p.winnerPick] = (counts[p.winnerPick] || 0) + 1;
+  players.forEach((player) => {
+    counts[player.winnerPick] = (counts[player.winnerPick] || 0) + 1;
   });
 
   const ctx = document.getElementById("winnerChart");
@@ -109,30 +135,33 @@ function renderChart() {
     type: "pie",
     data: {
       labels: Object.keys(counts),
-      datasets: [{
-        data: Object.values(counts),
-        backgroundColor: [
-          "#4f46e5",
-          "#22c55e",
-          "#f59e0b",
-          "#ef4444",
-          "#3b82f6",
-          "#a855f7",
-          "#14b8a6",
-          "#eab308"
-        ]
-      }]
+      datasets: [
+        {
+          data: Object.values(counts),
+          backgroundColor: [
+            "#4f46e5",
+            "#22c55e",
+            "#f59e0b",
+            "#ef4444",
+            "#3b82f6",
+            "#a855f7",
+            "#14b8a6",
+            "#eab308",
+            "#f97316",
+            "#06b6d4",
+            "#84cc16",
+            "#ec4899"
+          ]
+        }
+      ]
     },
     options: {
       plugins: {
         legend: {
-          position: "bottom", // 👈 cleaner than side
+          position: "bottom",
           labels: {
             boxWidth: 12,
-            padding: 15,
-            font: {
-              size: 12
-            }
+            padding: 14
           }
         }
       }
@@ -142,73 +171,127 @@ function renderChart() {
 
 // ================= DROPDOWNS =================
 function populateDropdowns() {
-  const add = document.getElementById("eliminatedSelect");
-  const remove = document.getElementById("removeEliminatedSelect");
+  const eliminatedSelect = document.getElementById("eliminatedSelect");
+  const removeEliminatedSelect = document.getElementById("removeEliminatedSelect");
 
-  const eliminated = getEliminatedList();
-  const available = allCastaways.filter(p => !eliminated.includes(p));
+  if (!eliminatedSelect || !removeEliminatedSelect) return;
 
-  add.innerHTML = `<option value="">Select</option>`;
-  available.forEach(p => {
-    add.innerHTML += `<option value="${p}">${p}</option>`;
+  const eliminatedPlayers = getEliminatedList();
+  const availablePlayers = allCastaways.filter(
+    (player) => !eliminatedPlayers.includes(player)
+  );
+
+  eliminatedSelect.innerHTML = `<option value="">Select</option>`;
+  availablePlayers.forEach((player) => {
+    eliminatedSelect.innerHTML += `<option value="${player}">${player}</option>`;
   });
 
-  remove.innerHTML = `<option value="">Select</option>`;
-  eliminated.forEach(p => {
-    remove.innerHTML += `<option value="${p}">${p}</option>`;
+  removeEliminatedSelect.innerHTML = `<option value="">Select</option>`;
+  eliminatedPlayers.forEach((player) => {
+    removeEliminatedSelect.innerHTML += `<option value="${player}">${player}</option>`;
   });
+}
+
+function populateWeekDropdown() {
+  const weekSelect = document.getElementById("weekSelect");
+  if (!weekSelect) return;
+
+  const existingValue = weekSelect.value;
+  weekSelect.innerHTML = "";
+
+  for (let i = 1; i <= 20; i++) {
+    weekSelect.innerHTML += `<option value="${i}">Week ${i}</option>`;
+  }
+
+  if (existingValue) {
+    weekSelect.value = existingValue;
+  } else if (eliminatedByWeek.length > 0) {
+    const latestWeek = Math.max(...eliminatedByWeek.map((w) => w.week));
+    weekSelect.value = String(latestWeek);
+  } else {
+    weekSelect.value = "1";
+  }
 }
 
 // ================= ADMIN ACTIONS =================
 function addEliminated() {
-  const val = document.getElementById("eliminatedSelect").value;
-  if (!val) return alert("Select a player");
+  const playerName = document.getElementById("eliminatedSelect").value;
+  const weekSelect = document.getElementById("weekSelect");
 
-  let last = eliminatedByWeek[eliminatedByWeek.length - 1];
-
-  if (!last) {
-    last = { week: 1, players: [] };
-    eliminatedByWeek.push(last);
+  if (!playerName) {
+    alert("Select a player");
+    return;
   }
 
-  if (!last.players.includes(val)) {
-    last.players.push(val);
+  let selectedWeek = 1;
+
+  if (weekSelect) {
+    selectedWeek = parseInt(weekSelect.value, 10);
   }
+
+  let weekObject = eliminatedByWeek.find((week) => week.week === selectedWeek);
+
+  if (!weekObject) {
+    weekObject = { week: selectedWeek, players: [] };
+    eliminatedByWeek.push(weekObject);
+  }
+
+  if (!weekObject.players.includes(playerName)) {
+    weekObject.players.push(playerName);
+  }
+
+  eliminatedByWeek.sort((a, b) => a.week - b.week);
 
   rerender();
 }
 
 function removeEliminated() {
-  const val = document.getElementById("removeEliminatedSelect").value;
-  if (!val) return alert("Select a player");
+  const playerName = document.getElementById("removeEliminatedSelect").value;
 
-  eliminatedByWeek.forEach(w => {
-    w.players = w.players.filter(p => p !== val);
+  if (!playerName) {
+    alert("Select a player");
+    return;
+  }
+
+  eliminatedByWeek.forEach((week) => {
+    week.players = week.players.filter((player) => player !== playerName);
   });
 
   rerender();
 }
 
 function saveUpdate() {
-  updateMessage = document.getElementById("updateInput").value;
+  const updateInput = document.getElementById("updateInput");
+
+  if (!updateInput) return;
+
+  updateMessage = updateInput.value;
   renderUpdateMessage();
 }
 
 // ================= LOGIN =================
 function setupLogin() {
-  document.getElementById("adminLoginBtn").onclick = () => {
-    document.getElementById("loginPopup").classList.remove("hidden");
+  const adminLoginBtn = document.getElementById("adminLoginBtn");
+  const loginPopup = document.getElementById("loginPopup");
+  const loginSubmitBtn = document.getElementById("loginSubmitBtn");
+  const passwordInput = document.getElementById("passwordInput");
+
+  if (!adminLoginBtn || !loginPopup || !loginSubmitBtn || !passwordInput) return;
+
+  adminLoginBtn.onclick = () => {
+    loginPopup.classList.remove("hidden");
+    passwordInput.value = "";
+    passwordInput.focus();
   };
 
-  document.getElementById("loginSubmitBtn").onclick = () => {
-    const val = document.getElementById("passwordInput").value;
+  loginSubmitBtn.onclick = () => {
+    const enteredPassword = passwordInput.value;
 
-    if (val === ADMIN_PASSWORD) {
+    if (enteredPassword === ADMIN_PASSWORD) {
       isAdmin = true;
-
-      document.getElementById("loginPopup").classList.add("hidden");
+      loginPopup.classList.add("hidden");
       document.getElementById("adminPanel").classList.remove("hidden");
-      document.getElementById("adminLoginBtn").style.display = "none";
+      adminLoginBtn.style.display = "none";
     } else {
       alert("Wrong password");
     }
@@ -217,7 +300,10 @@ function setupLogin() {
 
 // ================= LOGOUT =================
 function setupLogout() {
-  document.getElementById("logoutBtn").onclick = () => {
+  const logoutBtn = document.getElementById("logoutBtn");
+  if (!logoutBtn) return;
+
+  logoutBtn.onclick = () => {
     isAdmin = false;
     document.getElementById("adminPanel").classList.add("hidden");
     document.getElementById("adminLoginBtn").style.display = "inline-block";
@@ -228,37 +314,76 @@ function setupLogout() {
 function isLocked() {
   const now = new Date();
 
-  if (manualLock) return true;
+  if (manualLock) {
+    return true;
+  }
 
-  if (lockOnDate) {
-    if (now >= new Date(lockOnDate)) return true;
+  if (globalLockOnDate) {
+    const lockDate = new Date(globalLockOnDate);
+    if (now >= lockDate) {
+      return true;
+    }
   }
 
   return false;
 }
 
+function applyLockState() {
+  const lockScreen = document.getElementById("lockScreen");
+  const app = document.getElementById("app");
+
+  if (!lockScreen || !app) return;
+
+  if (isLocked()) {
+    lockScreen.classList.remove("hidden");
+    app.classList.add("hidden");
+  } else {
+    lockScreen.classList.add("hidden");
+  }
+}
+
 function setupLockControls() {
-  document.getElementById("lockBtn").onclick = () => {
-    manualLock = true;
-    alert("Locked");
-  };
+  const lockBtn = document.getElementById("lockBtn");
+  const unlockBtn = document.getElementById("unlockBtn");
+  const setDateLockBtn = document.getElementById("setDateLockBtn");
+  const lockDateInput = document.getElementById("lockDateInput");
 
-  document.getElementById("unlockBtn").onclick = () => {
-    manualLock = false;
-    lockOnDate = null;
-    localStorage.removeItem("lockOnDate");
-    alert("Unlocked");
-  };
+  if (lockBtn) {
+    lockBtn.onclick = () => {
+      manualLock = true;
+      applyLockState();
+    };
+  }
 
-  document.getElementById("setDateLockBtn").onclick = () => {
-    const val = document.getElementById("lockDateInput").value;
-    if (!val) return alert("Pick a date");
+  if (unlockBtn) {
+    unlockBtn.onclick = () => {
+      manualLock = false;
+      globalLockOnDate = null;
 
-    lockOnDate = val;
-    localStorage.setItem("lockOnDate", val);
+      if (lockDateInput) {
+        lockDateInput.value = "";
+      }
 
-    alert("Will lock ON " + val);
-  };
+      applyLockState();
+    };
+  }
+
+  if (setDateLockBtn && lockDateInput) {
+    setDateLockBtn.onclick = () => {
+      const selectedDate = lockDateInput.value;
+
+      if (!selectedDate) {
+        alert("Pick a date");
+        return;
+      }
+
+      // This changes it only in the current loaded code.
+      // For GitHub Pages, you must upload/commit the changed file for everyone to get it.
+      globalLockOnDate = selectedDate;
+      applyLockState();
+      alert("Will lock ON " + selectedDate + ". Upload/commit your updated files to GitHub for the live site to use it.");
+    };
+  }
 }
 
 // ================= CORE =================
@@ -268,6 +393,7 @@ function rerender() {
   renderEliminatedByWeek();
   renderChart();
   populateDropdowns();
+  populateWeekDropdown();
 }
 
 // ================= START =================
@@ -276,23 +402,35 @@ function startApp() {
   setupLogout();
   setupLockControls();
 
-  document.getElementById("addEliminatedBtn").onclick = addEliminated;
-  document.getElementById("removeEliminatedBtn").onclick = removeEliminated;
-  document.getElementById("saveUpdateBtn").onclick = saveUpdate;
+  const addEliminatedBtn = document.getElementById("addEliminatedBtn");
+  const removeEliminatedBtn = document.getElementById("removeEliminatedBtn");
+  const saveUpdateBtn = document.getElementById("saveUpdateBtn");
+  const continueBtn = document.getElementById("continueBtn");
+  const leaveBtn = document.getElementById("leaveBtn");
+
+  if (addEliminatedBtn) addEliminatedBtn.onclick = addEliminated;
+  if (removeEliminatedBtn) removeEliminatedBtn.onclick = removeEliminated;
+  if (saveUpdateBtn) saveUpdateBtn.onclick = saveUpdate;
 
   rerender();
 
-  if (isLocked()) {
-    document.getElementById("lockScreen").classList.remove("hidden");
-    return;
-  }
+  applyLockState();
+  if (isLocked()) return;
 
   document.getElementById("warningScreen").classList.remove("hidden");
 
-  document.getElementById("continueBtn").onclick = () => {
-    document.getElementById("warningScreen").classList.add("hidden");
-    document.getElementById("app").classList.remove("hidden");
-  };
+  if (continueBtn) {
+    continueBtn.onclick = () => {
+      document.getElementById("warningScreen").classList.add("hidden");
+      document.getElementById("app").classList.remove("hidden");
+    };
+  }
+
+  if (leaveBtn) {
+    leaveBtn.onclick = () => {
+      document.body.innerHTML = "";
+    };
+  }
 }
 
 startApp();
