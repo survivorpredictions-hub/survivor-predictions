@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Survivor Predictions</title>
+
+  <link rel="stylesheet" href="style.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- LOCK SCREEN -->
+  <div id="lockScreen" class="overlay hidden">
+    <div class="overlay-box">
+      <h1>Standings Locked</h1>
+      <p>Standings are currently unavailable. Please check back later.</p>
+    </div>
+  </div>
+
+  <!-- SPOILER WARNING -->
+  <div id="warningScreen" class="overlay hidden">
+    <div class="overlay-box">
+      <h1>Spoiler Warning</h1>
+      <p>Standings contain eliminated players.</p>
+      <button id="continueBtn">Continue</button>
+    </div>
+  </div>
+
+  <!-- ADMIN LOGIN POPUP -->
+  <div id="loginPopup" class="overlay hidden">
+    <div class="overlay-box">
+      <h1>Admin Login</h1>
+      <input type="text" id="passwordInput" placeholder="Enter password">
+      <br><br>
+      <button id="loginSubmitBtn">Login</button>
+    </div>
+  </div>
+
+  <div id="app" class="hidden">
+
+    <!-- HEADER -->
+    <header class="top-banner">
+      <img src="survivor50-logo.png" class="logo"/>
+      <h1>Survivor Predictions Standings</h1>
+      <p id="updateMessage"></p>
+    </header>
+
+    <!-- LOGIN BUTTON -->
+    <div style="text-align:right; margin:10px;">
+      <button id="adminLoginBtn">Admin Login</button>
+    </div>
+
+    <!-- ADMIN PANEL -->
+    <section id="adminPanel" class="admin-panel hidden">
+      <h2>Admin Panel</h2>
+
+      <div class="admin-row">
+        <label>Update Message</label>
+        <input id="updateInput"/>
+        <button id="saveUpdateBtn">Save</button>
+      </div>
+
+      <div class="admin-row">
+        <label>Add Eliminated</label>
+        <select id="eliminatedSelect"></select>
+        <button id="addEliminatedBtn">Add</button>
+      </div>
+
+      <div class="admin-row">
+        <label>Remove Eliminated</label>
+        <select id="removeEliminatedSelect"></select>
+        <button id="removeEliminatedBtn">Remove</button>
+      </div>
+
+      <!-- 🔥 FIXED WORDING -->
+      <div class="admin-row">
+        <label>Auto Lock ON Date</label>
+        <input type="date" id="lockDateInput"/>
+        <button id="setDateLockBtn">Set Lock Date</button>
+      </div>
+
+      <div class="admin-row">
+        <button id="lockBtn">Manual Lock</button>
+        <button id="unlockBtn">Unlock</button>
+      </div>
+
+      <button id="logoutBtn">Logout</button>
+    </section>
+
+    <!-- TABLE -->
+    <table>
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Name</th>
+          <th>Picks</th>
+          <th>Winner</th>
+          <th>Score</th>
+        </tr>
+      </thead>
+      <tbody id="standingsBody"></tbody>
+    </table>
+
+    <!-- CHART -->
+    <canvas id="winnerChart"></canvas>
+
+    <!-- ELIMINATED -->
+    <div id="eliminatedByWeek"></div>
+
+  </div>
+
+  <script src="data.js"></script>
+  <script src="script.js"></script>
+
+</body>
+</html>
