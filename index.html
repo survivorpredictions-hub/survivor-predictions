@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Survivor Predictions Standings</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- LOCK SCREEN -->
+  <div id="lockScreen" class="overlay hidden">
+    <div class="overlay-box">
+      <h1>Standings Temporarily Unavailable</h1>
+      <p>The standings are locked for spoiler protection while updates are being made.</p>
+
+      <div class="overlay-buttons">
+        <button id="lockAdminBtn">Admin Login</button>
+      </div>
+
+      <div id="lockLoginBox" class="hidden">
+        <input type="text" id="lockPasswordInput" placeholder="Enter admin password" />
+
+        <div class="overlay-buttons">
+          <button id="lockLoginSubmitBtn">Unlock Admin Access</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SPOILER WARNING -->
+  <div id="warningScreen" class="overlay hidden">
+    <div class="overlay-box">
+      <h1>Spoiler Warning</h1>
+      <p>These standings show eliminated players and contain spoilers.</p>
+
+      <div class="overlay-buttons">
+        <button id="continueBtn">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN LOGIN -->
+  <div id="loginPopup" class="overlay hidden">
+    <div class="overlay-box">
+      <h1>Admin Login</h1>
+
+      <input type="text" id="passwordInput" placeholder="Enter admin password" />
+
+      <div class="overlay-buttons">
+        <button id="loginSubmitBtn">Login</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="app" class="hidden">
+
+    <header class="top-banner">
+      <img src="survivor50-logo.png" class="logo" />
+      <h1>Survivor Predictions Standings</h1>
+      <p id="updateMessage">Standings updated.</p>
+    </header>
+
+    <div style="text-align:right; margin:10px;">
+      <button id="adminLoginBtn">Admin Login</button>
+    </div>
+
+    <!-- ADMIN PANEL -->
+    <section class="admin-panel hidden" id="adminPanel">
+      <h2>Admin Panel</h2>
+
+      <!-- ADD / REMOVE BUTTONS -->
+      <div class="admin-row">
+        <label>Add Button</label>
+        <input type="text" id="btnTextInput" placeholder="Text" />
+        <input type="text" id="btnLinkInput" placeholder="Link" />
+        <button id="addButtonBtn">Add</button>
+      </div>
+
+      <div class="admin-row">
+        <label>Remove Button</label>
+        <select id="removeBtnSelect"></select>
+        <button id="removeButtonBtn">Remove</button>
+      </div>
+
+      <!-- EXISTING -->
+      <div class="admin-row">
+        <label>Update Message</label>
+        <input type="text" id="updateInput" />
+        <button id="saveUpdateBtn">Save</button>
+      </div>
+
+      <div class="admin-row">
+        <label>Select Week</label>
+        <select id="weekSelect"></select>
+      </div>
+
+      <div class="admin-row">
+        <label>Add Eliminated</label>
+        <select id="eliminatedSelect"></select>
+        <button id="addEliminatedBtn">Add</button>
+      </div>
+
+      <div class="admin-row">
+        <label>Remove Eliminated</label>
+        <select id="removeEliminatedSelect"></select>
+        <button id="removeEliminatedBtn">Remove</button>
+      </div>
+
+      <div class="admin-row">
+        <button id="lockBtn">Lock</button>
+        <button id="unlockBtn">Unlock</button>
+        <button id="logoutBtn">Logout</button>
+      </div>
+    </section>
+
+    <!-- TABLE -->
+    <section class="table-section">
+      <table>
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Participant</th>
+            <th>Final Three</th>
+            <th>Winner</th>
+            <th>Score</th>
+          </tr>
+        </thead>
+        <tbody id="standingsBody"></tbody>
+      </table>
+    </section>
+
+    <!-- CHART -->
+    <section class="chart-section">
+      <h2>Winner Prediction Breakdown</h2>
+      <canvas id="winnerChart"></canvas>
+    </section>
+
+    <!-- ELIMINATED -->
+    <section class="eliminated-section">
+      <h2>Eliminated Players by Week</h2>
+      <div id="eliminatedByWeek"></div>
+
+      <div id="customButtons" style="text-align:center; margin-top:15px;"></div>
+    </section>
+
+  </div>
+
+  <script src="data.js"></script>
+  <script src="script.js"></script>
+
+  <script>
+    const customButtons = [];
+    const container = document.getElementById("customButtons");
+    const removeSelect = document.getElementById("removeBtnSelect");
+
+    // ADD BUTTON
+    document.getElementById("addButtonBtn").onclick = () => {
+      const text = document.getElementById("btnTextInput").value;
+      const link = document.getElementById("btnLinkInput").value;
+      if (!text || !link) return;
+
+      const btn = document.createElement("a");
+      btn.href = link;
+      btn.target = "_blank";
+      btn.innerText = text;
+      btn.className = "custom-btn";
+
+      container.appendChild(btn);
+
+      customButtons.push({ text, element: btn });
+
+      const option = document.createElement("option");
+      option.text = text;
+      option.value = text;
+      removeSelect.appendChild(option);
+
+      document.getElementById("btnTextInput").value = "";
+      document.getElementById("btnLinkInput").value = "";
+    };
+
+    // REMOVE BUTTON
+    document.getElementById("removeButtonBtn").onclick = () => {
+      const selected = removeSelect.value;
+      const index = customButtons.findIndex(b => b.text === selected);
+      if (index === -1) return;
+
+      customButtons[index].element.remove();
+      customButtons.splice(index, 1);
+
+      removeSelect.remove(removeSelect.selectedIndex);
+    };
+  </script>
+
+</body>
+</html>
